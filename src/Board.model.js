@@ -1,10 +1,11 @@
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
+// private
 const getRandomChar = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
 
 const createMatrix = (w, h) =>
   Array.from({ length: h }).map((_, y) =>
-    Array.from({ length: w }).map((_, x) => ({ x, y, value: null }))
+    Array.from({ length: w }).map((_, x) => getInitialCell({x, y}))
   )
 
 const generateMatrix = (w, h, strainLength) => {
@@ -29,16 +30,41 @@ const setCellAt = (matrix, x, y, cell) =>
     x !== curX ? curCell : cell
   ))
 
+// public
+export const getInitialCell = ({ x, y }) => ({
+  x,
+  y,
+  value: null,
+})
+
 export const getInitialBoard = ({ w, h, strainLength = w * h / 2 }) => ({
   matrix: generateMatrix(w, h, strainLength),
   selected: null,
 })
 
-export const reduceBoard = (state, { type, payload }) => {
+export const reduceBoard = (board, { type, payload }) => {
+  console.log('%c reduceBoard: [%s]', 'color: green', type, payload)
+
   switch (type) {
-    // case
+    case 'select': {
+      const { matrix, selected } = board
+      const { x, y } = payload
+
+      if (selected && selected.x === x && selected.y === y) {
+        // unselect actually
+        return { ...board, selected: null }
+      }
+
+      const cell = getCellAt(matrix, x, y)
+      if (!cell) return board
+
+      return {
+        ...board,
+        selected: { x, y }
+      }
+    }
 
     default:
-      return state
+      return board
   }
 }

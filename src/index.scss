@@ -15,6 +15,7 @@ code {
 
 .App {
   cursor: default;
+  user-select: none;
 
   display: flex;
   flex-direction: column;
@@ -54,5 +55,10 @@ code {
     padding-bottom: 100%;
     display: inline-block;
     vertical-align: top;
+  }
+
+  &.is-selected {
+    color: #fff;
+    font-weight: bold;
   }
 }
