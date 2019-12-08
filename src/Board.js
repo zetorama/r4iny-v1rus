@@ -1,18 +1,15 @@
 import React from 'react'
-import { useState, useReducer, useMemo, useCallback } from 'react'
+import { useReducer, useMemo, useCallback } from 'react'
 
 import { getInitialBoard, reduceBoard } from './Board.model'
-
-export const SIZE_W = 8
-export const SIZE_H = 12
 
 const isSelected = (selected, x, y) => selected ? selected.x === x && selected.y === y : false
 const reverseMatrix = (matrix) => matrix.slice().reverse()
 
-export function Board({ w = SIZE_W, h = SIZE_H }) {
-  const cssVars = useMemo(() => ({ '--w': w, '--h': h }), [w, h])
+export function Board() {
+  const [board, dispatch] = useReducer(reduceBoard, getInitialBoard())
+  const cssVars = useMemo(() => ({ '--w': board.w, '--h': board.h }), [board.w, board.h])
 
-  const [board, dispatch] = useReducer(reduceBoard, getInitialBoard({ w, h }))
 
   const handleCellClick = useCallback(
     ev => {

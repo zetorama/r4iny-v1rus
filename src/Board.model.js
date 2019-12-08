@@ -1,11 +1,16 @@
-export const INITIAL_ROWS = 4
+
+export const SIZE_W = 8
+export const SIZE_H = 12
+export const INITIAL_ROWS = 8
 export const TARGET_SUM = 10
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+// export const ALPHABET = [5]
 
-export const TICKS_COST_SWAP = 6
+export const TICKS_COST_SWAP = 8
 export const TICKS_COST_ELIMINATE = 2
 
 // private
+const runSeries = (arg, callbcks) => callbcks.reduce((arg, cb) => cb(arg), arg)
 const getRandomChar = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
 
 const createMatrix = (w, h) =>
@@ -24,6 +29,28 @@ const generateMatrix = (w, h, strainLength) => {
       x = 0
       y++
     }
+  }
+
+  return matrix
+}
+
+const isEmptyRow = (matrix, y) => matrix[y].every(({ value }) => value == null)
+
+const checkEmptyRows = (matrix) => {
+  for (let y = matrix.length - 2; y >= 0; y--) {
+    if (!isEmptyRow(matrix, y)) continue
+
+    // put down every other row
+    let tempY = y
+    for (; tempY < matrix.length - 1; tempY++) {
+      if (isEmptyRow(matrix, tempY + 1)) break
+
+      // copy top row to current row
+      matrix = matrix.map((row, y) => y !== tempY ? row : matrix[tempY + 1].map(cell => ({ ...cell, y: tempY })))
+    }
+
+    // and cleanup the very last one
+    matrix = matrix.map((row, y) => y !== tempY ? row : matrix[tempY].map(cell => ({ ...cell, value: null })))
   }
 
   return matrix
@@ -84,7 +111,11 @@ export const getInitialCell = ({ x, y }) => ({
   value: null,
 })
 
-export const getInitialBoard = ({ w, h, strainLength = w * INITIAL_ROWS }) => ({
+export const getInitialBoard = ({
+  w = SIZE_W,
+  h = SIZE_H,
+  strainLength = w * INITIAL_ROWS,
+} = {}) => ({
   w,
   h,
   n: strainLength,
@@ -172,12 +203,15 @@ export const reduceBoard = (board, { type, payload }) => {
 
       // clear both cells
       const strainLength = board.strainLength - 2
-      const temp = setValueAt(matrix, selected.x, selected.y, null)
 
       return {
         ...board,
         selected: null,
-        matrix: setValueAt(temp, target.x, target.y, null),
+        matrix: runSeries(matrix, [
+          (m) => setValueAt(m, selected.x, selected.y, null),
+          (m) => setValueAt(m, target.x, target.y, null),
+          (m) => checkEmptyRows(m),
+        ]),
         strainLength,
         ticksLeft: board.ticksLeft - TICKS_COST_ELIMINATE,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
