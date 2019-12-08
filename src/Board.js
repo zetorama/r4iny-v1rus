@@ -35,10 +35,18 @@ export function Board({ w = SIZE_W, h = SIZE_H }) {
   const matrixMirrored = useMemo(() => reverseMatrix(board.matrix), [board.matrix])
   // const matrixMirrored = board.matrix
 
-  return (
-    <div className="Board" style={cssVars}>
+  const hasntTicks = board.ticksLeft < 1
 
-      <main className="Matrix">
+  const clsName = [
+    'Board',
+    board.gameOver && 'is-over',
+    hasntTicks && 'is-frozen'
+  ].filter(Boolean).join(' ')
+
+  return (
+    <div className={clsName} style={cssVars}>
+
+      <main className='Matrix'>
         {matrixMirrored.map(row => row.map((cell) => (
           <Cell
             key={cell.x + ':' + cell.y}
@@ -49,17 +57,26 @@ export function Board({ w = SIZE_W, h = SIZE_H }) {
         )))}
       </main>
 
-      <aside className="StatusBar">
-        <div className="StatusBar-info">
+      <aside className='StatusBar'>
+        <div className={['StatusBar-action', board.gameOver && 'is-blinking'].filter(Boolean).join(' ')}>
+          <button onClick={handleReset}>← new game</button>
+        </div>
+        <div className='StatusBar-info'>
           Strain: {board.strainLength}
         </div>
-        <div className="StatusBar-action">
-          <button onClick={handleReplicate}>replicate</button>
+        <div className={['StatusBar-info', !board.gameOver && hasntTicks && 'is-danger'].filter(Boolean).join(' ')}>
+          Ticks: {board.ticksLeft}
         </div>
-        <div className="StatusBar-action">
-          <button onClick={handleReset}>new game</button>
+        <div className={['StatusBar-action', !board.gameOver && hasntTicks && 'is-blinking'].filter(Boolean).join(' ')}>
+          <button onClick={handleReplicate} disabled={Boolean(board.gameOver)}>replicate</button>
         </div>
       </aside>
+
+      {board.gameOver && (
+        <div className='Message'>
+          {board.gameOver === 'win' ? 'You win' : 'Game over'}
+        </div>
+      )}
     </div>
   )
 }

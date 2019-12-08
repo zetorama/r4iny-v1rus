@@ -2,6 +2,9 @@ export const INITIAL_ROWS = 4
 export const TARGET_SUM = 10
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
+export const TICKS_COST_SWAP = 6
+export const TICKS_COST_ELIMINATE = 2
+
 // private
 const getRandomChar = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
 
@@ -86,6 +89,7 @@ export const getInitialBoard = ({ w, h, strainLength = w * INITIAL_ROWS }) => ({
   h,
   n: strainLength,
   strainLength,
+  ticksLeft: strainLength,
   matrix: generateMatrix(w, h, strainLength),
   nextX: w - 1,
   nextStep: -1,
@@ -109,13 +113,13 @@ export const reduceBoard = (board, { type, payload }) => {
       for (const value of strain) {
         // find empty row, which would be the next one after top-most value
         let y = board.h - 1
-        while (getValueAt(matrix, nextX, y) == null) {
+        while (y >= 0 && getValueAt(matrix, nextX, y) == null) {
           y--
         }
 
         if (++y === board.h) {
           // this is the end
-          return { ...board, gameOver: 'lose' }
+          return { ...board, matrix, gameOver: 'lose' }
         }
 
         matrix = setValueAt(matrix, nextX, y, value)
@@ -130,7 +134,16 @@ export const reduceBoard = (board, { type, payload }) => {
         }
       }
 
-      return { ...board, matrix, nextX, nextStep }
+      const strainLength = board.strainLength * 2
+
+      return {
+        ...board,
+        matrix,
+        strainLength,
+        ticksLeft: board.strainLength * 2,
+        nextX,
+        nextStep,
+      }
     }
 
     case 'select': {
@@ -153,6 +166,7 @@ export const reduceBoard = (board, { type, payload }) => {
           ...board,
           matrix: swapCells(matrix, target, selected),
           selected: null,
+          ticksLeft: board.ticksLeft - TICKS_COST_SWAP,
         }
       }
 
@@ -165,6 +179,7 @@ export const reduceBoard = (board, { type, payload }) => {
         selected: null,
         matrix: setValueAt(temp, target.x, target.y, null),
         strainLength,
+        ticksLeft: board.ticksLeft - TICKS_COST_ELIMINATE,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
       }
 
