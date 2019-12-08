@@ -7,7 +7,7 @@ export const SIZE_W = 8
 export const SIZE_H = 12
 
 const isSelected = (selected, x, y) => selected ? selected.x === x && selected.y === y : false
-const reverseMatrix = (matrix) => matrix.map(row => row.slice().reverse()).reverse()
+const reverseMatrix = (matrix) => matrix.slice().reverse()
 
 export function Board({ w = SIZE_W, h = SIZE_H }) {
   const cssVars = useMemo(() => ({ '--w': w, '--h': h }), [w, h])
@@ -29,19 +29,37 @@ export function Board({ w = SIZE_W, h = SIZE_H }) {
     [dispatch],
   )
 
+  const handleReplicate = useCallback(ev => dispatch({ type: 'replicate' }), [dispatch])
+  const handleReset = useCallback(ev => dispatch({ type: 'reset' }), [dispatch])
+
   const matrixMirrored = useMemo(() => reverseMatrix(board.matrix), [board.matrix])
   // const matrixMirrored = board.matrix
 
   return (
     <div className="Board" style={cssVars}>
-      {matrixMirrored.map(row => row.map((cell) => (
-        <Cell
-          key={cell.x + ':' + cell.y}
-          cell={cell}
-          isSelected={isSelected(board.selected, cell.x, cell.y)}
-          onClick={handleCellClick}
-        />
-      )))}
+
+      <main className="Matrix">
+        {matrixMirrored.map(row => row.map((cell) => (
+          <Cell
+            key={cell.x + ':' + cell.y}
+            cell={cell}
+            isSelected={isSelected(board.selected, cell.x, cell.y)}
+            onClick={handleCellClick}
+          />
+        )))}
+      </main>
+
+      <aside className="StatusBar">
+        <div className="StatusBar-info">
+          Strain: {board.strainLength}
+        </div>
+        <div className="StatusBar-action">
+          <button onClick={handleReplicate}>replicate</button>
+        </div>
+        <div className="StatusBar-action">
+          <button onClick={handleReset}>new game</button>
+        </div>
+      </aside>
     </div>
   )
 }

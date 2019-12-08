@@ -29,7 +29,9 @@ code {
   }
 }
 
-.Board {
+
+
+.Matrix {
   width: 90vw;
   max-width: 450px;
 
@@ -61,4 +63,16 @@ code {
     color: #fff;
     font-weight: bold;
   }
+}
+
+.StatusBar {
+  margin: 1em 0;
+
+  display: flex;
+  align-items: center;
+}
+
+.StatusBar-info,
+.StatusBar-action {
+  flex: 1;
 }

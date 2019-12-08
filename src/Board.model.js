@@ -1,3 +1,4 @@
+export const INITIAL_ROWS = 4
 export const TARGET_SUM = 10
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
@@ -36,8 +37,9 @@ const canSelectBoth = (matrix, one, two) => {
   const stepY = one.y === two.y ? 0 : one.y < two.y ? 1 : -1
   let x = one.x + stepX
   let y = one.y + stepY
-  while (x !== two.x && y !== two.y) {
-    if (getCellAt(matrix, x, y).value != null) return false
+  console.log({ stepX, stepY, x, y })
+  while (x !== two.x || y !== two.y) {
+    if (getValueAt(matrix, x, y) != null) return false
 
     x += stepX
     y += stepY
@@ -51,16 +53,26 @@ const canEliminateBoth = (_matrix, one, two) =>
   one.value === two.value || one.value + two.value === TARGET_SUM
 
 const swapCells = (matrix, one, two) => {
-  const { value: temp } = one
-  matrix = setCellAt(matrix, one.x, one.y, { ...one, value: two.value })
-  return setCellAt(matrix, two.x, two.y, { ...two, value: temp })
+  matrix = setValueAt(matrix, one.x, one.y, two.value)
+  return setValueAt(matrix, two.x, two.y, one.value)
 }
 
-const getCellAt = (matrix, x, y) => matrix[y][x]
-const setCellAt = (matrix, x, y, cell) =>
+const getValueAt = (matrix, x, y) => matrix[y][x].value
+const setValueAt = (matrix, x, y, value) =>
   matrix.map((row, curY) => y !== curY ? row : row.map((curCell, curX) =>
-    x !== curX ? curCell : cell
+    x !== curX ? curCell : { ...curCell, value }
   ))
+
+const getStrain = (matrix) => {
+  const strain = []
+  for (const row of matrix) {
+    for (const { value } of row) {
+      if (value != null) strain.push(value)
+    }
+  }
+
+  return strain
+}
 
 // public
 export const getInitialCell = ({ x, y }) => ({
@@ -69,45 +81,93 @@ export const getInitialCell = ({ x, y }) => ({
   value: null,
 })
 
-export const getInitialBoard = ({ w, h, strainLength = w * h / 2 }) => ({
+export const getInitialBoard = ({ w, h, strainLength = w * INITIAL_ROWS }) => ({
+  w,
+  h,
+  n: strainLength,
+  strainLength,
   matrix: generateMatrix(w, h, strainLength),
+  nextX: w - 1,
+  nextStep: -1,
   selected: null,
+  gameOver: null,
 })
 
 export const reduceBoard = (board, { type, payload }) => {
   console.log('%c reduceBoard: [%s]', 'color: green', type, payload)
 
   switch (type) {
-    case 'select': {
-      const { matrix, selected } = board
-      const { x, y } = payload
-      const cell = getCellAt(matrix, x, y)
-      if (cell.value == null || (selected && selected.x === cell.x && selected.y === cell.y)) {
-        // unselect on empty or same cell
-        return { ...board, selected: null }
-      }
+    case 'reset': {
+      const { w, h, n: strainLength } = board
+      return getInitialBoard({ w, h, strainLength })
+    }
 
-      if (!selected || !canSelectBoth(matrix, cell, selected)) {
-        // just toggle selected to a new cell
-        return { ...board, selected: { ...cell } }
-      }
+    case 'replicate': {
+      let { matrix, nextX, nextStep } = board
+      const strain = getStrain(matrix)
 
-      if (canEliminateBoth(matrix, cell, selected)) {
-        const temp = setCellAt(matrix, selected.x, selected.y, { ...selected, value: null })
+      for (const value of strain) {
+        // find empty row, which would be the next one after top-most value
+        let y = board.h - 1
+        while (getValueAt(matrix, nextX, y) == null) {
+          y--
+        }
 
-        return {
-          ...board,
-          selected: null,
-          matrix: setCellAt(temp, cell.x, cell.y, { ...cell, value: null })
+        if (++y === board.h) {
+          // this is the end
+          return { ...board, gameOver: 'lose' }
+        }
+
+        matrix = setValueAt(matrix, nextX, y, value)
+
+        nextX += nextStep
+        if (nextX === -1) {
+          nextX = 0
+          nextStep = 1
+        } else if (nextX === board.w) {
+          nextX = board.w - 1
+          nextStep = -1
         }
       }
 
-      // otherwise, just swap them
+      return { ...board, matrix, nextX, nextStep }
+    }
+
+    case 'select': {
+      const { matrix, selected } = board
+      const { x, y } = payload
+      const target = { x, y, value: getValueAt(matrix, x, y) }
+      if (target.value == null || (selected && selected.x === target.x && selected.y === target.y)) {
+        // unselect on empty or when it's the same cell
+        return { ...board, selected: null }
+      }
+
+      if (!selected || !canSelectBoth(matrix, target, selected)) {
+        // toggle selected to a new cell
+        return { ...board, selected: { ...target } }
+      }
+
+      if (!canEliminateBoth(matrix, target, selected)) {
+        // swap both cells
+        return {
+          ...board,
+          matrix: swapCells(matrix, target, selected),
+          selected: null,
+        }
+      }
+
+      // clear both cells
+      const strainLength = board.strainLength - 2
+      const temp = setValueAt(matrix, selected.x, selected.y, null)
+
       return {
         ...board,
-        matrix: swapCells(matrix, cell, selected),
         selected: null,
+        matrix: setValueAt(temp, target.x, target.y, null),
+        strainLength,
+        gameOver: strainLength < 1 ? 'win' : board.gameOver,
       }
+
     }
 
     default:
