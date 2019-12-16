@@ -1,15 +1,12 @@
 
 export const SIZE_W = 8
 export const SIZE_H = 12
-export const INITIAL_ROWS = 8
-export const TARGET_SUM = 10
-export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+export const INITIAL_ROWS = 4
+export const TARGET_SUM = -1 // hence, disabled
+export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7]
 // export const ALPHABET = [5]
 
-export const TICKS_COST_SWAP = 8
-export const TICKS_COST_ELIMINATE = 2
-
-// private
+// helpers
 const runSeries = (arg, callbcks) => callbcks.reduce((arg, cb) => cb(arg), arg)
 const getRandomChar = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
 
@@ -46,10 +43,12 @@ const checkEmptyRows = (matrix) => {
       if (isEmptyRow(matrix, tempY + 1)) break
 
       // copy top row to current row
+      // eslint-disable-next-line no-loop-func
       matrix = matrix.map((row, y) => y !== tempY ? row : matrix[tempY + 1].map(cell => ({ ...cell, y: tempY })))
     }
 
     // and cleanup the very last one
+    // eslint-disable-next-line no-loop-func
     matrix = matrix.map((row, y) => y !== tempY ? row : matrix[tempY].map(cell => ({ ...cell, value: null })))
   }
 
@@ -67,7 +66,6 @@ const canSelectBoth = (matrix, one, two) => {
   const stepY = one.y === two.y ? 0 : one.y < two.y ? 1 : -1
   let x = one.x + stepX
   let y = one.y + stepY
-  console.log({ stepX, stepY, x, y })
   while (x !== two.x || y !== two.y) {
     if (getValueAt(matrix, x, y) != null) return false
 
@@ -93,7 +91,7 @@ const setValueAt = (matrix, x, y, value) =>
     x !== curX ? curCell : { ...curCell, value }
   ))
 
-const getStrain = (matrix) => {
+export const getStrain = (matrix) => {
   const strain = []
   for (const row of matrix) {
     for (const { value } of row) {
@@ -104,7 +102,42 @@ const getStrain = (matrix) => {
   return strain
 }
 
-// public
+const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
+  let nextY = cursor.y
+  let nextX = cursor.x + (isXForward ? 1 : -1)
+  while (!matrix[nextY]?.[nextX] || getValueAt(matrix, nextX, nextY) == null) {
+    if (nextY < 0 || nextY >= matrix.length) {
+      nextY = nextY < 0 ? 0 : matrix.length - 1
+      isYForward = !isYForward
+      continue
+    }
+    if (nextX < 0 || nextX >= matrix[nextY].length) {
+      nextX = nextX < 0 ? 0 : matrix[nextY].length - 1
+      nextY += isYForward ? 1 : -1
+      isXForward = !isXForward
+      continue
+    }
+
+    nextX += (isXForward ? 1 : -1)
+  }
+
+  return {
+    cursor: { x: nextX, y: nextY },
+    isXForward,
+    isYForward,
+  }
+}
+
+export const findEmptyRowIndex = (matrix, x) => {
+  let y = matrix.length - 1
+  while (y >= 0 && getValueAt(matrix, x, y) == null) {
+    y--
+  }
+
+  return y + 1
+}
+
+// model-related
 export const getInitialCell = ({ x, y }) => ({
   x,
   y,
@@ -118,12 +151,11 @@ export const getInitialBoard = ({
 } = {}) => ({
   w,
   h,
-  n: strainLength,
-  strainLength,
-  ticksLeft: strainLength,
+  n: strainLength, // keep what was initial length of strain
   matrix: generateMatrix(w, h, strainLength),
-  nextX: w - 1,
-  nextStep: -1,
+  cursor: { x: 0, y: 0 },
+  isXForward: true,
+  isYForward: true,
   selected: null,
   gameOver: null,
 })
@@ -137,43 +169,22 @@ export const reduceBoard = (board, { type, payload }) => {
       return getInitialBoard({ w, h, strainLength })
     }
 
-    case 'replicate': {
-      let { matrix, nextX, nextStep } = board
-      const strain = getStrain(matrix)
+    case 'clone': {
+      const { x, y, n } = payload
+      let { matrix } = board
 
-      for (const value of strain) {
-        // find empty row, which would be the next one after top-most value
-        let y = board.h - 1
-        while (y >= 0 && getValueAt(matrix, nextX, y) == null) {
-          y--
-        }
-
-        if (++y === board.h) {
-          // this is the end
-          return { ...board, matrix, gameOver: 'lose' }
-        }
-
-        matrix = setValueAt(matrix, nextX, y, value)
-
-        nextX += nextStep
-        if (nextX === -1) {
-          nextX = 0
-          nextStep = 1
-        } else if (nextX === board.w) {
-          nextX = board.w - 1
-          nextStep = -1
-        }
+      if (y >= board.h) {
+        return { ...board, matrix, gameOver: 'lose' }
       }
 
-      const strainLength = board.strainLength * 2
+      // clone character & advance cursor
+      const value = getValueAt(matrix, board.cursor.x, board.cursor.y)
+      matrix = setValueAt(matrix, x, y, value)
 
       return {
         ...board,
+        ...advanceCursor(matrix, board.cursor, board.isXForward, board.isYForward),
         matrix,
-        strainLength,
-        ticksLeft: board.strainLength * 2,
-        nextX,
-        nextStep,
       }
     }
 
@@ -197,23 +208,21 @@ export const reduceBoard = (board, { type, payload }) => {
           ...board,
           matrix: swapCells(matrix, target, selected),
           selected: null,
-          ticksLeft: board.ticksLeft - TICKS_COST_SWAP,
         }
       }
 
       // clear both cells
-      const strainLength = board.strainLength - 2
+      const nextMatrix = runSeries(matrix, [
+        (m) => setValueAt(m, selected.x, selected.y, null),
+        (m) => setValueAt(m, target.x, target.y, null),
+        (m) => checkEmptyRows(m),
+      ])
+      const strainLength = getStrain(nextMatrix).length
 
       return {
         ...board,
         selected: null,
-        matrix: runSeries(matrix, [
-          (m) => setValueAt(m, selected.x, selected.y, null),
-          (m) => setValueAt(m, target.x, target.y, null),
-          (m) => checkEmptyRows(m),
-        ]),
-        strainLength,
-        ticksLeft: board.ticksLeft - TICKS_COST_ELIMINATE,
+        matrix: nextMatrix,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
       }
 

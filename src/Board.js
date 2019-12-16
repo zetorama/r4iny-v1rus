@@ -1,15 +1,15 @@
 import React from 'react'
 import { useReducer, useMemo, useCallback } from 'react'
 
-import { getInitialBoard, reduceBoard } from './Board.model'
+import { getInitialBoard, reduceBoard, getStrain, INITIAL_ROWS } from './Board.model'
+import {Rain} from './Rain'
 
-const isSelected = (selected, x, y) => selected ? selected.x === x && selected.y === y : false
+const isSame = ({x, y}, optional) => optional ? optional.x === x && optional.y === y : false
 const reverseMatrix = (matrix) => matrix.slice().reverse()
 
 export function Board() {
   const [board, dispatch] = useReducer(reduceBoard, getInitialBoard())
   const cssVars = useMemo(() => ({ '--w': board.w, '--h': board.h }), [board.w, board.h])
-
 
   const handleCellClick = useCallback(
     ev => {
@@ -26,18 +26,19 @@ export function Board() {
     [dispatch],
   )
 
-  const handleReplicate = useCallback(ev => dispatch({ type: 'replicate' }), [dispatch])
   const handleReset = useCallback(ev => dispatch({ type: 'reset' }), [dispatch])
+  const handleRainDrop = useCallback((payload) => {
+    dispatch({ type: 'clone', payload })
+  }, [dispatch])
 
+
+  const strainLength = useMemo(() => getStrain(board.matrix).length, [board.matrix])
   const matrixMirrored = useMemo(() => reverseMatrix(board.matrix), [board.matrix])
   // const matrixMirrored = board.matrix
-
-  const hasntTicks = board.ticksLeft < 1
 
   const clsName = [
     'Board',
     board.gameOver && 'is-over',
-    hasntTicks && 'is-frozen'
   ].filter(Boolean).join(' ')
 
   return (
@@ -48,10 +49,21 @@ export function Board() {
           <Cell
             key={cell.x + ':' + cell.y}
             cell={cell}
-            isSelected={isSelected(board.selected, cell.x, cell.y)}
+            isSelected={isSame({ x: cell.x, y: cell.y }, board.selected)}
+            isCursor={isSame({ x: cell.x, y: cell.y }, board.cursor)}
             onClick={handleCellClick}
           />
         )))}
+
+        {board.gameOver == null && (
+          <Rain
+            w={board.w}
+            h={board.h}
+            maxChars={INITIAL_ROWS}
+            matrix={board.matrix}
+            onDrop={handleRainDrop}
+          />
+        )}
       </main>
 
       <aside className='StatusBar'>
@@ -59,13 +71,7 @@ export function Board() {
           <button onClick={handleReset}>← new game</button>
         </div>
         <div className='StatusBar-info'>
-          Strain: {board.strainLength}
-        </div>
-        <div className={['StatusBar-info', !board.gameOver && hasntTicks && 'is-danger'].filter(Boolean).join(' ')}>
-          Ticks: {board.ticksLeft}
-        </div>
-        <div className={['StatusBar-action', !board.gameOver && hasntTicks && 'is-blinking'].filter(Boolean).join(' ')}>
-          <button onClick={handleReplicate} disabled={Boolean(board.gameOver)}>replicate</button>
+          Strain: {strainLength}
         </div>
       </aside>
 
@@ -78,10 +84,14 @@ export function Board() {
   )
 }
 
-export function Cell({ cell, isSelected, onClick }) {
+export function Cell({ cell, isSelected, isCursor, onClick }) {
   const { x, y, value } = cell
   const cssVars = useMemo(() => ({ '--x': x, '--y': y }), [x, y])
-  const clsName = `Cell ${isSelected ? 'is-selected' : ''}`
+  const clsName = [
+    'Cell',
+    isSelected && 'is-selected',
+    isCursor && 'is-cursor',
+  ].filter(Boolean).join(' ')
 
   return (
     <div className={clsName} style={cssVars} data-x={x} data-y={y} onClick={onClick}>
