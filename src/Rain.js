@@ -21,7 +21,7 @@ const ALPHABET = [
 const randInt = (min, max) => Math.floor(Math.random() * (max - min)) + min
 const getRandomChar = () => ALPHABET[randInt(0, ALPHABET.length)]
 
-const generateStream = ({ minChars = 3, maxChars, minSpeed = 50, maxSpeed = 100 }) => ({
+const generateStream = ({ minChars = 2, maxChars, minSpeed = 50, maxSpeed = 100 }) => ({
   position: 0,
   speed: randInt(minSpeed, maxSpeed),
   chars: Array.from({ length: randInt(minChars, maxChars) }).map(_ => getRandomChar()),

@@ -137,6 +137,8 @@ export const findEmptyRowIndex = (matrix, x) => {
   return y + 1
 }
 
+export const isSameCoord = ({ x, y }, optional) => optional ? optional.x === x && optional.y === y : false
+
 // model-related
 export const getInitialCell = ({ x, y }) => ({
   x,
@@ -189,7 +191,7 @@ export const reduceBoard = (board, { type, payload }) => {
     }
 
     case 'select': {
-      const { matrix, selected } = board
+      const { matrix, selected, cursor } = board
       const { x, y } = payload
       const target = { x, y, value: getValueAt(matrix, x, y) }
       if (target.value == null || (selected && selected.x === target.x && selected.y === target.y)) {
@@ -218,12 +220,14 @@ export const reduceBoard = (board, { type, payload }) => {
         (m) => checkEmptyRows(m),
       ])
       const strainLength = getStrain(nextMatrix).length
+      const shouldMoveCursor = isSameCoord(cursor, selected) || isSameCoord(cursor, target)
 
       return {
         ...board,
         selected: null,
         matrix: nextMatrix,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
+        ...(shouldMoveCursor ? advanceCursor(nextMatrix, cursor, board.isXForward, board.isYForward) : undefined),
       }
 
     }

@@ -1,10 +1,9 @@
 import React from 'react'
 import { useReducer, useMemo, useCallback } from 'react'
 
-import { getInitialBoard, reduceBoard, getStrain, INITIAL_ROWS } from './Board.model'
+import { getInitialBoard, reduceBoard, getStrain, isSameCoord } from './Board.model'
 import {Rain} from './Rain'
 
-const isSame = ({x, y}, optional) => optional ? optional.x === x && optional.y === y : false
 const reverseMatrix = (matrix) => matrix.slice().reverse()
 
 export function Board() {
@@ -49,8 +48,8 @@ export function Board() {
           <Cell
             key={cell.x + ':' + cell.y}
             cell={cell}
-            isSelected={isSame({ x: cell.x, y: cell.y }, board.selected)}
-            isCursor={isSame({ x: cell.x, y: cell.y }, board.cursor)}
+            isSelected={isSameCoord(cell, board.selected)}
+            isCursor={isSameCoord(cell, board.cursor)}
             onClick={handleCellClick}
           />
         )))}
@@ -59,7 +58,7 @@ export function Board() {
           <Rain
             w={board.w}
             h={board.h}
-            maxChars={INITIAL_ROWS}
+            maxChars={board.h / 2}
             matrix={board.matrix}
             onDrop={handleRainDrop}
           />
