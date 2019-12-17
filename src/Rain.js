@@ -27,13 +27,13 @@ const generateStream = ({ minChars = 2, maxChars, minSpeed = 50, maxSpeed = 100 
   chars: Array.from({ length: randInt(minChars, maxChars) }).map(_ => getRandomChar()),
 })
 
-const createStreams = ({ w, h, maxChars, minSpeed, maxSpeed }) => {
-  return Array.from({ length: w }).map(_ => generateStream({ maxChars, minSpeed, maxSpeed }))
+const createStreams = ({ w, minChars, maxChars, minSpeed, maxSpeed }) => {
+  return Array.from({ length: w }).map(_ => generateStream({ minChars, maxChars, minSpeed, maxSpeed }))
 }
 
-export function Rain({ w, h, matrix, maxChars, speedKoeff = 1 / 1000, onDrop }) {
+export function Rain({ w, h, matrix, minChars, maxChars, isActive = true, pace: speedKoeff = 1 / 1000, onDrop = null }) {
   const [, reRender] = useReducer(counter => counter + 1, 0)
-  const streams = useRef(createStreams({ w, h, maxChars }))
+  const streams = useRef(createStreams({ w, h, minChars, maxChars }))
   const containerRef = useRef(null)
   const shouldRAF = useRef(false)
 
@@ -57,9 +57,9 @@ export function Rain({ w, h, matrix, maxChars, speedKoeff = 1 / 1000, onDrop }) 
         streamEls[i].style.transform = `translateY(${stream.position}%)`
         continue
       } else {
-        streams.current[i] = generateStream({ maxChars })
+        streams.current[i] = generateStream({ minChars, maxChars })
         reRender()
-        onDrop({
+        onDrop && onDrop({
           x: i,
           y: dropUntilIndex + 1,
           n: stream.chars.length,
@@ -76,13 +76,13 @@ export function Rain({ w, h, matrix, maxChars, speedKoeff = 1 / 1000, onDrop }) 
   }, [stepRAF, shouldRAF])
 
   useEffect(() => {
-    shouldRAF.current = true
-    runRAF()
+    shouldRAF.current = isActive
+    if (isActive) runRAF()
 
     return () => {
       shouldRAF.current = false
     }
-  }, [runRAF])
+  }, [runRAF, isActive])
 
   return (
     <div className='Rain' ref={containerRef}>

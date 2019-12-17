@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css?family=Press+Start+2P&display=swap&subset=cyrillic');
 
+:root {
+  font-size: 16px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -26,14 +30,16 @@ button {
   background: #222;
   box-shadow: 2px 2px 10px #272;
 
-  line-height: 1.8em;
-  font-size: .8em;
+  line-height: 1.6em;
+  font-size: 1rem;
   letter-spacing: .05em;
   white-space: nowrap;
 
   &:hover,
   &:active {
-    outline: 3px solid #3c3;
+    outline: 3px solid #c33;
+    color: #fff;
+    border-color: #fff;
   }
 }
 
@@ -46,11 +52,16 @@ button {
   flex-direction: column;
   align-items: center;
 
-  font-family: sans-serif;
+  font-family: 'Press Start 2P';
   text-align: center;
 
   h1 {
     color: green;
+  }
+
+  button {
+    font-family: 'Press Start 2P';
+    font-size: .7rem;
   }
 }
 
@@ -73,10 +84,6 @@ button {
   border: 3px solid green;
   background: #121;
   color: #3c3;
-
-  font-family: 'Press Start 2P';
-  font-size: 1.3em;
-  font-weight: normal;
 
   .Board.is-over &,
   .Board.is-frozen & {
@@ -125,31 +132,73 @@ button {
 }
 
 .Rain-drop {
-  // font-weight: bold;
-  transform: translateY(-.1em) scale(2);
+  font-weight: bold;
+  font-size: 15px;
+  font-family: 'J-Glyph';
+  color: #282;
+  transform: translate(-.1em, -.1em) scale(3);
 
   &:nth-of-type(1) {
-    color: white;
+    opacity: .666;
+    font-weight: normal;
+    color: #fff;
+    text-shadow: 0 0 5px #efe, 0 0 2px #282;
+  }
+
+  @for $i from 2 through 8 {
+    &:nth-of-type(#{$i}) {
+      opacity: #{0.75 - $i / 10};
+    }
   }
 }
 
 .Cell {
   z-index: 1;
   position: relative;
-  border: 1px solid #131;
+  // border: 1px solid #131;
 
-  // &:empty {
-  // }
+}
+.Cell-char {
+  font-size: 1.5rem;
+  // font-weight: bold;
+  color: #afa;
+  text-shadow: 0 0 15px #e22;
+  transform: scale(1.5);
+  animation: appear forwards .6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
-  &.is-selected {
-    color: #fff;
-    font-weight: bold;
+  .Cell.is-cursor & {
+    // opacity: .666;
+    // color: #e22;
+    animation: none;
+    transform: scale(1.3);
+    color: #3c3;
+    text-shadow: 0 0 15px #e22, 0 0 10px #e22, 0 0 5px #e22;
   }
 
-  &.is-cursor {
-    z-index: 2;
+  .Cell.is-selected & {
+    color: #fff;
+    // font-weight: bold;
+    animation: none;
+    transform: scale(1.5);
+  }
+
+  .Cell.is-cleared &:empty::before {
+    content: '·';
+  }
+}
+
+@keyframes appear {
+  from {
+    // transform: scale(1.5);
     text-shadow: 0 0 15px #e22;
-    border-color: #e22;
+  }
+  30% {
+    color: #e22;
+  }
+  to {
+    transform: scale(1);
+    text-shadow: none;
+    color: #3c3;
   }
 }
 
@@ -158,6 +207,8 @@ button {
 
   display: flex;
   align-items: center;
+
+  font-size: .66rem;
 }
 
 .StatusBar-info {
@@ -194,20 +245,22 @@ button {
 }
 
 .Message {
-  z-index: 3;
+  z-index: 100;
   position: absolute;
   top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
 
-  padding: .2em .7em;
+  padding: .5em 1em;
 
   border: 3px solid #3c3;
-  background: rgba(22, 55, 22, .8);
+  background: rgba(22, 55, 22, .85);
+  box-shadow: 0 0 1em #2e2;
   color: #3c3;
 
-  font-size: 1.8em;
+  font-size: 1.5rem;
   font-weight: normal;
+  letter-spacing: .1em;
   text-transform: uppercase;
   white-space: nowrap;
 }

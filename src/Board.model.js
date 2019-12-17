@@ -1,10 +1,16 @@
 
 export const SIZE_W = 8
 export const SIZE_H = 12
-export const INITIAL_ROWS = 4
+export const INITIAL_ROWS = 0
 export const TARGET_SUM = -1 // hence, disabled
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7]
 // export const ALPHABET = [5]
+
+export const PACE_SCALE = 50000
+export const PACE_MIN = 10
+export const PACE_MAX = 1000
+export const PACE_INC_CLEAR = 1
+export const PACE_INC_SWAP = 5
 
 // helpers
 const runSeries = (arg, callbcks) => callbcks.reduce((arg, cb) => cb(arg), arg)
@@ -67,7 +73,7 @@ const canSelectBoth = (matrix, one, two) => {
   let x = one.x + stepX
   let y = one.y + stepY
   while (x !== two.x || y !== two.y) {
-    if (getValueAt(matrix, x, y) != null) return false
+    if (getValueAt(matrix, { x, y }) != null) return false
 
     x += stepX
     y += stepY
@@ -80,16 +86,18 @@ const canSelectBoth = (matrix, one, two) => {
 const canEliminateBoth = (_matrix, one, two) =>
   one.value === two.value || one.value + two.value === TARGET_SUM
 
-const swapCells = (matrix, one, two) => {
-  matrix = setValueAt(matrix, one.x, one.y, two.value)
-  return setValueAt(matrix, two.x, two.y, one.value)
-}
+const swapCells = (matrix, one, two) => runSeries(matrix, [
+  (m) => setValueAt(m, one, two.value),
+  (m) => setValueAt(m, two, one.value),
+])
 
-const getValueAt = (matrix, x, y) => matrix[y][x].value
-const setValueAt = (matrix, x, y, value) =>
-  matrix.map((row, curY) => y !== curY ? row : row.map((curCell, curX) =>
-    x !== curX ? curCell : { ...curCell, value }
-  ))
+const getValueAt = (matrix, cell) => cell ? matrix[cell.y]?.[cell.x]?.value : undefined
+const setValueAt = (matrix, cell, value) =>
+  cell
+    ? matrix.map((row, curY) => cell.y !== curY ? row : row.map((curCell, curX) =>
+        cell.x !== curX ? curCell : { ...curCell, value }
+      ))
+    : matrix
 
 export const getStrain = (matrix) => {
   const strain = []
@@ -103,12 +111,17 @@ export const getStrain = (matrix) => {
 }
 
 const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
+  if (!cursor) return { cursor, isXForward, isYForward }
+
+  let edgesToReach = 2
   let nextY = cursor.y
   let nextX = cursor.x + (isXForward ? 1 : -1)
-  while (!matrix[nextY]?.[nextX] || getValueAt(matrix, nextX, nextY) == null) {
+  while (!matrix[nextY]?.[nextX] || getValueAt(matrix, { x: nextX, y: nextY }) == null) {
     if (nextY < 0 || nextY >= matrix.length) {
       nextY = nextY < 0 ? 0 : matrix.length - 1
       isYForward = !isYForward
+
+      if (--edgesToReach < 1) break
       continue
     }
     if (nextX < 0 || nextX >= matrix[nextY].length) {
@@ -121,6 +134,11 @@ const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
     nextX += (isXForward ? 1 : -1)
   }
 
+  if (!edgesToReach) {
+    // it means, we have looked through the whole matrix, and there's no cursor anymore
+    return { cursor: null, isXForward, isYForward }
+  }
+
   return {
     cursor: { x: nextX, y: nextY },
     isXForward,
@@ -130,7 +148,7 @@ const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
 
 export const findEmptyRowIndex = (matrix, x) => {
   let y = matrix.length - 1
-  while (y >= 0 && getValueAt(matrix, x, y) == null) {
+  while (y >= 0 && getValueAt(matrix, { x, y }) == null) {
     y--
   }
 
@@ -149,13 +167,15 @@ export const getInitialCell = ({ x, y }) => ({
 export const getInitialBoard = ({
   w = SIZE_W,
   h = SIZE_H,
-  strainLength = w * INITIAL_ROWS,
+  n = w * INITIAL_ROWS,
 } = {}) => ({
   w,
   h,
-  n: strainLength, // keep what was initial length of strain
-  matrix: generateMatrix(w, h, strainLength),
-  cursor: { x: 0, y: 0 },
+  n,
+  matrix: generateMatrix(w, h, n),
+  isInitializing: n < 1,
+  pace: n < 1 ? PACE_MAX : PACE_MIN,
+  cursor: null,
   isXForward: true,
   isYForward: true,
   selected: null,
@@ -172,28 +192,47 @@ export const reduceBoard = (board, { type, payload }) => {
     }
 
     case 'clone': {
+      if (board.gameOver) return board
+
       const { x, y, n } = payload
-      let { matrix } = board
 
       if (y >= board.h) {
-        return { ...board, matrix, gameOver: 'lose' }
+        // when you reach the top, you loose
+        return { ...board, gameOver: 'lose' }
       }
 
       // clone character & advance cursor
-      const value = getValueAt(matrix, board.cursor.x, board.cursor.y)
-      matrix = setValueAt(matrix, x, y, value)
+      // but in case if it's a first row, make it N times instead
+      let times = y > 0 ? 1 : n
+      let nextY = y
+      let state = { ...board }
+      while (times--) {
+        const value = state.cursor ? getValueAt(state.matrix, state.cursor) : getRandomChar()
+        state.matrix = setValueAt(state.matrix, { x, y: nextY }, value)
 
-      return {
-        ...board,
-        ...advanceCursor(matrix, board.cursor, board.isXForward, board.isYForward),
-        matrix,
+        Object.assign(state, advanceCursor(state.matrix, state.cursor, state.isXForward, state.isYForward))
+
+        // advance `y` to fill the whole stream into column
+        nextY++
       }
+
+      if (state.isInitializing && state.matrix[0].every(({value}) => value != null)) {
+        Object.assign(state, {
+          isInitializing: false,
+          cursor: { x: 0, y: 0 },
+          pace: PACE_MIN,
+        })
+      }
+
+      return state
     }
 
     case 'select': {
-      const { matrix, selected, cursor } = board
+      if (board.gameOver) return board
+
+      const { matrix, selected, cursor, pace } = board
       const { x, y } = payload
-      const target = { x, y, value: getValueAt(matrix, x, y) }
+      const target = { x, y, value: getValueAt(matrix, { x, y }) }
       if (target.value == null || (selected && selected.x === target.x && selected.y === target.y)) {
         // unselect on empty or when it's the same cell
         return { ...board, selected: null }
@@ -210,22 +249,24 @@ export const reduceBoard = (board, { type, payload }) => {
           ...board,
           matrix: swapCells(matrix, target, selected),
           selected: null,
+          pace: pace + PACE_INC_SWAP,
         }
       }
 
       // clear both cells
       const nextMatrix = runSeries(matrix, [
-        (m) => setValueAt(m, selected.x, selected.y, null),
-        (m) => setValueAt(m, target.x, target.y, null),
+        (m) => setValueAt(m, selected, null),
+        (m) => setValueAt(m, target, null),
         (m) => checkEmptyRows(m),
       ])
       const strainLength = getStrain(nextMatrix).length
-      const shouldMoveCursor = isSameCoord(cursor, selected) || isSameCoord(cursor, target)
+      const shouldMoveCursor = cursor ? isSameCoord(selected, cursor) || isSameCoord(target, cursor) : false
 
       return {
         ...board,
-        selected: null,
         matrix: nextMatrix,
+        selected: null,
+        pace: pace + PACE_INC_CLEAR,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
         ...(shouldMoveCursor ? advanceCursor(nextMatrix, cursor, board.isXForward, board.isYForward) : undefined),
       }

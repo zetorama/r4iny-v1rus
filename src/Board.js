@@ -1,27 +1,18 @@
 import React from 'react'
 import { useReducer, useMemo, useCallback } from 'react'
 
-import { getInitialBoard, reduceBoard, getStrain, isSameCoord } from './Board.model'
+import { getInitialBoard, reduceBoard, getStrain, isSameCoord, PACE_SCALE } from './Board.model'
 import {Rain} from './Rain'
 
 const reverseMatrix = (matrix) => matrix.slice().reverse()
+const isClearedCell = (matrix, { x, y }) => matrix.slice(y).some(row => row[x].value != null)
 
 export function Board() {
   const [board, dispatch] = useReducer(reduceBoard, getInitialBoard())
   const cssVars = useMemo(() => ({ '--w': board.w, '--h': board.h }), [board.w, board.h])
 
   const handleCellClick = useCallback(
-    ev => {
-      ev.preventDefault()
-      const { x, y } = ev.target.dataset
-      dispatch({
-        type: 'select',
-        payload: {
-          x: Number(x),
-          y: Number(y),
-        },
-      })
-    },
+    ({ x, y }) => dispatch({ type: 'select', payload: { x, y } }),
     [dispatch],
   )
 
@@ -48,21 +39,23 @@ export function Board() {
           <Cell
             key={cell.x + ':' + cell.y}
             cell={cell}
+            isCleared={isClearedCell(board.matrix, cell)}
             isSelected={isSameCoord(cell, board.selected)}
             isCursor={isSameCoord(cell, board.cursor)}
             onClick={handleCellClick}
           />
         )))}
 
-        {board.gameOver == null && (
-          <Rain
-            w={board.w}
-            h={board.h}
-            maxChars={board.h / 2}
-            matrix={board.matrix}
-            onDrop={handleRainDrop}
-          />
-        )}
+        <Rain
+          isActive={!board.gameOver}
+          pace={board.pace / PACE_SCALE}
+          w={board.w}
+          h={board.h}
+          minChars={board.isInitializing ? Math.ceil(board.h / 3) : 2}
+          maxChars={board.h / 2 + 1}
+          matrix={board.matrix}
+          onDrop={handleRainDrop}
+        />
       </main>
 
       <aside className='StatusBar'>
@@ -71,6 +64,9 @@ export function Board() {
         </div>
         <div className='StatusBar-info'>
           Strain: {strainLength}
+        </div>
+        <div className='StatusBar-info'>
+          Pace: {board.pace}
         </div>
       </aside>
 
@@ -83,18 +79,19 @@ export function Board() {
   )
 }
 
-export function Cell({ cell, isSelected, isCursor, onClick }) {
-  const { x, y, value } = cell
-  const cssVars = useMemo(() => ({ '--x': x, '--y': y }), [x, y])
+export function Cell({ cell, isCleared, isSelected, isCursor, onClick }) {
   const clsName = [
     'Cell',
+    isCleared && 'is-cleared',
     isSelected && 'is-selected',
     isCursor && 'is-cursor',
   ].filter(Boolean).join(' ')
 
+  const handleCellClick = useCallback(() => onClick && onClick(cell), [onClick, cell])
+
   return (
-    <div className={clsName} style={cssVars} data-x={x} data-y={y} onClick={onClick}>
-      {value}
+    <div className={clsName} onClick={handleCellClick}>
+      <div className='Cell-char'>{cell.value}</div>
     </div>
   )
 }
