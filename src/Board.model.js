@@ -174,7 +174,9 @@ export const getInitialBoard = ({
   n,
   matrix: generateMatrix(w, h, n),
   isInitializing: n < 1,
+  isJumping: false,
   pace: n < 1 ? PACE_MAX : PACE_MIN,
+  prevPace: PACE_MIN,
   cursor: null,
   isXForward: true,
   isYForward: true,
@@ -189,6 +191,17 @@ export const reduceBoard = (board, { type, payload }) => {
     case 'reset': {
       const { w, h, n: strainLength } = board
       return getInitialBoard({ w, h, strainLength })
+    }
+
+    case 'jump-forward': {
+      if (board.gameOver) return board
+
+      return {
+        ...board,
+        isJumping: true,
+        prevPace: board.pace,
+        pace: PACE_MAX,
+      }
     }
 
     case 'clone': {
@@ -220,8 +233,14 @@ export const reduceBoard = (board, { type, payload }) => {
         Object.assign(state, {
           isInitializing: false,
           cursor: { x: 0, y: 0 },
-          pace: PACE_MIN,
+          pace: board.prevPace,
         })
+      } else if (state.isJumping) {
+        Object.assign(state, {
+          isJumping: false,
+          pace: board.prevPace,
+        })
+
       }
 
       return state

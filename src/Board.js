@@ -17,10 +17,10 @@ export function Board() {
   )
 
   const handleReset = useCallback(ev => dispatch({ type: 'reset' }), [dispatch])
+  const handleJumpForward = useCallback(ev => dispatch({ type: 'jump-forward' }), [dispatch])
   const handleRainDrop = useCallback((payload) => {
     dispatch({ type: 'clone', payload })
   }, [dispatch])
-
 
   const strainLength = useMemo(() => getStrain(board.matrix).length, [board.matrix])
   const matrixMirrored = useMemo(() => reverseMatrix(board.matrix), [board.matrix])
@@ -51,7 +51,7 @@ export function Board() {
           pace={board.pace / PACE_SCALE}
           w={board.w}
           h={board.h}
-          minChars={board.isInitializing ? Math.ceil(board.h / 3) : 2}
+          minChars={3}
           maxChars={board.h / 2 + 1}
           matrix={board.matrix}
           onDrop={handleRainDrop}
@@ -60,13 +60,16 @@ export function Board() {
 
       <aside className='StatusBar'>
         <div className={['StatusBar-action', board.gameOver && 'is-blinking'].filter(Boolean).join(' ')}>
-          <button onClick={handleReset}>← new game</button>
+          <button onClick={handleReset} title='Restart game'>＜ reset</button>
         </div>
         <div className='StatusBar-info'>
-          Strain: {strainLength}
+          strain: {strainLength}
         </div>
         <div className='StatusBar-info'>
-          Pace: {board.pace}
+          pace: {board.pace}
+        </div>
+        <div className='StatusBar-action'>
+          <button onClick={handleJumpForward} disabled={!!board.gameOver} title='Fast-forward'>＞</button>
         </div>
       </aside>
 
