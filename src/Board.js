@@ -52,7 +52,7 @@ export function Board() {
           w={board.w}
           h={board.h}
           minChars={3}
-          maxChars={board.h / 2 + 1}
+          maxChars={board.h / 2}
           matrix={board.matrix}
           onDrop={handleRainDrop}
         />
@@ -75,7 +75,7 @@ export function Board() {
 
       {board.gameOver && (
         <div className='Message'>
-          {board.gameOver === 'win' ? 'You win' : 'Game over'}
+          {board.gameOver === 'win' ? 'threat cleared' : 'system failure'}
         </div>
       )}
     </div>
@@ -83,6 +83,7 @@ export function Board() {
 }
 
 export function Cell({ cell, isCleared, isSelected, isCursor, onClick }) {
+  const cssVars = useMemo(() => ({ '--x': cell.x, '--y': cell.y, '--yMax5': Math.min(5, cell.y) }), [cell.x, cell.y])
   const clsName = [
     'Cell',
     isCleared && 'is-cleared',
@@ -93,8 +94,10 @@ export function Cell({ cell, isCleared, isSelected, isCursor, onClick }) {
   const handleCellClick = useCallback(() => onClick && onClick(cell), [onClick, cell])
 
   return (
-    <div className={clsName} onClick={handleCellClick}>
-      <div className='Cell-char'>{cell.value}</div>
+    <div className={clsName} style={cssVars} onClick={handleCellClick}>
+      {cell.value != null && (
+        <div className='Cell-char'>{cell.value}</div>
+      )}
     </div>
   )
 }

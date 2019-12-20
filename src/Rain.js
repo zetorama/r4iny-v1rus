@@ -3,6 +3,7 @@ import { useReducer, useCallback, useRef, useEffect } from 'react'
 
 import { findEmptyRowIndex } from './Board.model'
 
+// 零癸虚壱壹甲弐貳乙参參丙四肆丁五伍戊六陸己七柒庚八捌辛九玖壬 0123456789 GAME OVER
 const ALPHABET = [
   // https://www.omniglot.com/language/numbers/japanese.htm
   // http://www.sljfaq.org/afaq/jikkan-juunishi.html
@@ -90,7 +91,9 @@ export function Rain({ w, h, matrix, minChars, maxChars, isActive = true, pace: 
       {streams.current.map(({ chars, position }, i) => (
         <div className='Rain-stream' key={i} data-index={i} style={{ transform: `translateY(${position}%)` } }>
           {chars.map((char, i) => (
-            <div className='Rain-drop' key={i}>{char}</div>
+            <div className='Rain-drop' key={i}>
+              <div className='Rain-drop-char'>{char}</div>
+            </div>
           ))}
         </div>
       ))}
