@@ -51,8 +51,8 @@ export function Board() {
           pace={board.pace / PACE_SCALE}
           w={board.w}
           h={board.h}
-          minChars={3}
-          maxChars={board.h / 2}
+          minChars={2}
+          maxChars={board.h / 3 + 1}
           matrix={board.matrix}
           onDrop={handleRainDrop}
         />

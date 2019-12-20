@@ -1,7 +1,9 @@
 
 export const SIZE_W = 8
 export const SIZE_H = 12
-export const INITIAL_ROWS = 0
+export const MAX_INITIAL_Y = 9
+export const INITIAL_ROWS = 5
+export const INITIAL_CELLS = SIZE_W * SIZE_H / 2 + SIZE_W
 export const TARGET_SUM = -1 // hence, disabled
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7]
 // export const ALPHABET = [5]
@@ -21,21 +23,21 @@ const createMatrix = (w, h) =>
     Array.from({ length: w }).map((_, x) => getInitialCell({x, y}))
   )
 
-const generateMatrix = (w, h, strainLength) => {
-  const matrix = createMatrix(w, h)
+// const generateMatrix = (w, h, strainLength) => {
+//   const matrix = createMatrix(w, h)
 
-  for (let i = 0, x = 0, y = 0; i < strainLength; i++) {
-    matrix[y][x].value = getRandomChar()
+//   for (let i = 0, x = 0, y = 0; i < strainLength; i++) {
+//     matrix[y][x].value = getRandomChar()
 
-    if (++x === w) {
-      // go to next row
-      x = 0
-      y++
-    }
-  }
+//     if (++x === w) {
+//       // go to next row
+//       x = 0
+//       y++
+//     }
+//   }
 
-  return matrix
-}
+//   return matrix
+// }
 
 const isEmptyRow = (matrix, y) => matrix[y].every(({ value }) => value == null)
 
@@ -153,6 +155,11 @@ const jumpForward = (board) => ({
   pace: PACE_MAX,
 })
 
+const isInitialFilled = (matrix) =>
+  matrix[INITIAL_ROWS - 1].every(({ value }) => value != null)
+  || getStrain(matrix).length >= INITIAL_CELLS
+  || matrix[MAX_INITIAL_Y].some(({ value }) => value != null)
+
 export const findEmptyRowIndex = (matrix, x) => {
   let y = matrix.length - 1
   while (y >= 0 && getValueAt(matrix, { x, y }) == null) {
@@ -174,15 +181,13 @@ export const getInitialCell = ({ x, y }) => ({
 export const getInitialBoard = ({
   w = SIZE_W,
   h = SIZE_H,
-  n = w * INITIAL_ROWS,
 } = {}) => ({
   w,
   h,
-  n,
-  matrix: generateMatrix(w, h, n),
-  isInitializing: n < 1,
+  matrix: createMatrix(w, h),
+  isInitializing: true,
   isJumping: false,
-  pace: n < 1 ? PACE_MAX : PACE_MIN,
+  pace: PACE_MAX,
   prevPace: PACE_MIN,
   cursor: null,
   isXForward: true,
@@ -231,7 +236,7 @@ export const reduceBoard = (board, { type, payload }) => {
         nextY++
       }
 
-      if (state.isInitializing && state.matrix[0].every(({value}) => value != null)) {
+      if (state.isInitializing && isInitialFilled(state.matrix)) {
         Object.assign(state, {
           isInitializing: false,
           cursor: { x: 0, y: 0 },
