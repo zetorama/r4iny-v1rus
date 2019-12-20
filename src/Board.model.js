@@ -1,18 +1,19 @@
 
 export const SIZE_W = 8
 export const SIZE_H = 12
-export const MAX_INITIAL_Y = 9
+export const MAX_INITIAL_Y = 8
 export const INITIAL_ROWS = 5
 export const INITIAL_CELLS = SIZE_W * SIZE_H / 2 + SIZE_W
 export const TARGET_SUM = -1 // hence, disabled
 export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7]
 // export const ALPHABET = [5]
 
-export const PACE_SCALE = 50000
-export const PACE_MIN = 10
-export const PACE_MAX = 1000
-export const PACE_INC_CLEAR = 1
-export const PACE_INC_SWAP = 0
+export const PACE_SCALE = 250000
+export const PACE_HOLD = 10
+export const PACE_MIN = 100
+export const PACE_MAX = 8110
+export const PACE_INC_CLEAR = 2
+export const PACE_INC_SWAP = 1
 
 // helpers
 const runSeries = (arg, callbcks) => callbcks.reduce((arg, cb) => cb(arg), arg)
@@ -240,14 +241,13 @@ export const reduceBoard = (board, { type, payload }) => {
         Object.assign(state, {
           isInitializing: false,
           cursor: { x: 0, y: 0 },
-          pace: board.prevPace,
+          pace: PACE_HOLD,
         })
       } else if (state.isJumping) {
         Object.assign(state, {
           isJumping: false,
           pace: board.prevPace,
         })
-
       }
 
       return state
@@ -275,7 +275,7 @@ export const reduceBoard = (board, { type, payload }) => {
           ...board,
           matrix: swapCells(matrix, target, selected),
           selected: null,
-          pace: pace + PACE_INC_SWAP,
+          pace: pace === PACE_HOLD ? board.prevPace : pace + PACE_INC_SWAP,
         })
       }
 
@@ -292,7 +292,7 @@ export const reduceBoard = (board, { type, payload }) => {
         ...board,
         matrix: nextMatrix,
         selected: null,
-        pace: pace + PACE_INC_CLEAR,
+        pace: pace === PACE_HOLD ? board.prevPace : pace + PACE_INC_CLEAR,
         gameOver: strainLength < 1 ? 'win' : board.gameOver,
         ...(shouldMoveCursor ? advanceCursor(nextMatrix, cursor, board.isXForward, board.isYForward) : undefined),
       }
