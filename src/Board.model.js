@@ -10,7 +10,7 @@ export const PACE_SCALE = 50000
 export const PACE_MIN = 10
 export const PACE_MAX = 1000
 export const PACE_INC_CLEAR = 1
-export const PACE_INC_SWAP = 5
+export const PACE_INC_SWAP = 0
 
 // helpers
 const runSeries = (arg, callbcks) => callbcks.reduce((arg, cb) => cb(arg), arg)
@@ -146,6 +146,13 @@ const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
   }
 }
 
+const jumpForward = (board) => ({
+  ...board,
+  isJumping: true,
+  prevPace: board.pace,
+  pace: PACE_MAX,
+})
+
 export const findEmptyRowIndex = (matrix, x) => {
   let y = matrix.length - 1
   while (y >= 0 && getValueAt(matrix, { x, y }) == null) {
@@ -196,12 +203,7 @@ export const reduceBoard = (board, { type, payload }) => {
     case 'jump-forward': {
       if (board.gameOver) return board
 
-      return {
-        ...board,
-        isJumping: true,
-        prevPace: board.pace,
-        pace: PACE_MAX,
-      }
+      return jumpForward(board)
     }
 
     case 'clone': {
@@ -264,12 +266,12 @@ export const reduceBoard = (board, { type, payload }) => {
 
       if (!canEliminateBoth(matrix, target, selected)) {
         // swap both cells
-        return {
+        return jumpForward({
           ...board,
           matrix: swapCells(matrix, target, selected),
           selected: null,
           pace: pace + PACE_INC_SWAP,
-        }
+        })
       }
 
       // clear both cells
