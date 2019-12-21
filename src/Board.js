@@ -22,9 +22,9 @@ export function Board() {
     dispatch({ type: 'clone', payload })
   }, [dispatch])
 
+  const canJump = Boolean(!board.isInitializing && !board.gameOver)
   const strainLength = useMemo(() => getStrain(board.matrix).length, [board.matrix])
   const matrixMirrored = useMemo(() => reverseMatrix(board.matrix), [board.matrix])
-  // const matrixMirrored = board.matrix
 
   const clsName = [
     'Board',
@@ -35,16 +35,18 @@ export function Board() {
     <div className={clsName} style={cssVars}>
 
       <main className='Matrix'>
-        {matrixMirrored.map(row => row.map((cell) => (
-          <Cell
-            key={cell.x + ':' + cell.y}
-            cell={cell}
-            isCleared={isClearedCell(board.matrix, cell)}
-            isSelected={isSameCoord(cell, board.selected)}
-            isCursor={isSameCoord(cell, board.cursor)}
-            onClick={handleCellClick}
-          />
-        )))}
+        <div className='Matrix-grid'>
+          {matrixMirrored.map(row => row.map((cell) => (
+            <Cell
+              key={cell.x + ':' + cell.y}
+              cell={cell}
+              isCleared={isClearedCell(board.matrix, cell)}
+              isSelected={isSameCoord(cell, board.selected)}
+              isCursor={isSameCoord(cell, board.cursor)}
+              onClick={handleCellClick}
+            />
+          )))}
+        </div>
 
         <Rain
           isActive={!board.gameOver}
@@ -69,13 +71,13 @@ export function Board() {
           pace: {board.pace}
         </div>
         <div className='StatusBar-action'>
-          <button onClick={handleJumpForward} disabled={!!board.gameOver} title='Fast-forward'>＞</button>
+          <button onClick={handleJumpForward} disabled={!canJump} title='Fast-forward'>＞</button>
         </div>
       </aside>
 
       {board.gameOver && (
         <div className='Message'>
-          {board.gameOver === 'win' ? 'threat cleared' : 'system failure'}
+          {board.gameOver === 'win' ? 'threat secured' : 'system failure'}
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ export const ALPHABET = [0, 1, 2, 3, 4, 5, 6, 7]
 export const PACE_SCALE = 250000
 export const PACE_HOLD = 10
 export const PACE_MIN = 100
-export const PACE_MAX = 8110
+export const PACE_MAX = 9999
 export const PACE_INC_CLEAR = 2
 export const PACE_INC_SWAP = 1
 
@@ -114,8 +114,6 @@ export const getStrain = (matrix) => {
 }
 
 const advanceCursor = (matrix, cursor, isXForward, isYForward) => {
-  if (!cursor) return { cursor, isXForward, isYForward }
-
   let edgesToReach = 2
   let nextY = cursor.y
   let nextX = cursor.x + (isXForward ? 1 : -1)
@@ -156,12 +154,17 @@ const jumpForward = (board) => ({
   pace: PACE_MAX,
 })
 
-const isInitialFilled = (matrix) =>
+const isInitDone = (matrix) =>
   matrix[INITIAL_ROWS - 1].every(({ value }) => value != null)
   || getStrain(matrix).length >= INITIAL_CELLS
   || matrix[MAX_INITIAL_Y].some(({ value }) => value != null)
 
-export const findEmptyRowIndex = (matrix, x) => {
+const getInitialCursor = (matrix) => ({
+  y: 0,
+  x: matrix[0].findIndex(({ value }) => value != null),
+})
+
+export const findEmptyY = (matrix, x) => {
   let y = matrix.length - 1
   while (y >= 0 && getValueAt(matrix, { x, y }) == null) {
     y--
@@ -224,29 +227,36 @@ export const reduceBoard = (board, { type, payload }) => {
 
       // clone character & advance cursor
       // but in case if it's a first row, make it N times instead
-      let times = y > 0 ? 1 : n
+      let repeat = y > 0 ? 1 : n
       let nextY = y
       let state = { ...board }
-      while (times--) {
-        const value = state.cursor ? getValueAt(state.matrix, state.cursor) : getRandomChar()
-        state.matrix = setValueAt(state.matrix, { x, y: nextY }, value)
+      while (repeat--) {
+        const { matrix, cursor } = state
+        let value = cursor && getValueAt(matrix, cursor)
+        if (value == null) {
+          value = getRandomChar()
+        }
+        state.matrix = setValueAt(matrix, { x, y: nextY }, value)
 
-        Object.assign(state, advanceCursor(state.matrix, state.cursor, state.isXForward, state.isYForward))
+        if (cursor) {
+          Object.assign(state, advanceCursor(matrix, cursor, state.isXForward, state.isYForward))
+        }
 
         // advance `y` to fill the whole stream into column
         nextY++
       }
 
-      if (state.isInitializing && isInitialFilled(state.matrix)) {
+      if (state.isInitializing && isInitDone(state.matrix)) {
         Object.assign(state, {
           isInitializing: false,
-          cursor: { x: 0, y: 0 },
+          cursor: getInitialCursor(state.matrix),
           pace: PACE_HOLD,
         })
       } else if (state.isJumping) {
         Object.assign(state, {
           isJumping: false,
           pace: board.prevPace,
+          prevPace: board.prevPace === PACE_HOLD ? PACE_MIN : board.prevPace,
         })
       }
 
@@ -288,7 +298,7 @@ export const reduceBoard = (board, { type, payload }) => {
       const strainLength = getStrain(nextMatrix).length
       const shouldMoveCursor = cursor ? isSameCoord(selected, cursor) || isSameCoord(target, cursor) : false
 
-      return {
+      const state = {
         ...board,
         matrix: nextMatrix,
         selected: null,
@@ -297,6 +307,7 @@ export const reduceBoard = (board, { type, payload }) => {
         ...(shouldMoveCursor ? advanceCursor(nextMatrix, cursor, board.isXForward, board.isYForward) : undefined),
       }
 
+      return strainLength === 1 ? jumpForward(state) : state
     }
 
     default:
